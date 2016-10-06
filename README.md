@@ -1,4 +1,3 @@
-# weiweicat333.github.io
-DaWei's Blog
-
-**用于做笔记**
+Here is my personal blog repository.  
+A jekyll project.  
+I will probably create wiki page/manual for this blog. maybe. if i had time. good luck
