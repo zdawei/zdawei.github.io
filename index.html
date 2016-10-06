@@ -1,19 +1,13 @@
 ---
-title:
-description:
-author: mlibre
+layout: default
+title: 我的Blog
 ---
-<!doctype html>
-<html>
-
-<head>
-    <title>{{site.title}}</title>
-    {% seo title=false %}
-</head>
-
-<body>
-    <a href="en">blog in english</a>
-    <a href="fa">بلاگ به زبان فارسی</a>
-</body>
-
-</html>
+<h2>{{ page.title }}</h2>
+<p>最新文章</p>
+<ul>
+	{% for post in site.posts %}
+	<li>
+		{{ post.date | date_to_string }} <a href="{{ site.baseurl }}{{ post.url }}">{{ post.title }}</a>
+	</li>
+	{% endfor %}
+</ul>
