@@ -9,7 +9,7 @@
 title: DaWei
 email: weiweicat333@gmail.com
 description: > # this means to ignore newlines until "baseurl:"
-  jekyll折腾我一个晚上
+  一个用来做笔记的地方——大威。
 baseurl: "" # the subpath of your site, e.g. /blog
 url: "http://weiweicat333.github.io" # the base hostname & protocol for your site
 twitter_username: weiweicat333
