@@ -2,7 +2,7 @@
 layout: post
 title:  "第一篇日志"
 date:   2016-10-07 13:50:08 +0800
-categories: jekyll test
+categories: jekyll mood
 ---
 
 # 第一篇日志
@@ -17,8 +17,8 @@ categories: jekyll test
 > 在看看，这个是引用  
 
 
-- [x] 这个是选择
-- [ ] haha
+ - [x] 这个是选择
+ - [ ] haha
 
 |表格|值域|
 |---|---|
