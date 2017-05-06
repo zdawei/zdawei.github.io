@@ -1,20 +1,19 @@
 ---
 layout: post
-title:  mysql搭建和node链接mysql
-date:   2017-01-01 20:21:08
+title: mysql搭建和node链接mysql
+date: 2017-01-01T20:21:08.000Z
 categories: nodejs mysql
 tags: nodejs
 ---
 
 # 1. windows下的免安装压缩包的mysql搭建
 
-
 1. [mysql](http://dev.mysql.com/downloads/mysql/) zip压缩包下载
 2. 解压缩至某条目录，比如：**d:\mysql**
 3. 更改**path**环境变量，把 **d：\mysql\bin** 地址追加到path变量之后
 4. 更改**d:\mysql**目录下的**my-default.ini**为**my.ini**
 5. 更改**my.ini**内容为如下代码所示
-6. 打开**cmd**，进入到**bin**目录，输入**mysqld install** 安装**my.ini**配置，输入*mysqld remove*可以删除配置。
+6. 打开**cmd**，进入到**bin**目录，输入**mysqld install** 安装**my.ini**配置，输入_mysqld remove_可以删除配置。
 7. 初始化**mysql\data**,进入**d:\mysql**输入**mysqld --initialize-insecure --user=mysql**进行data的初始化
 8. 输入**net start mysql**启动服务器，输入**net stop mysql**停止服务器。
 
@@ -64,22 +63,22 @@ default-storage-engine=INNODB
 # read_rnd_buffer_size = 2M
 
 sql_mode=NO_ENGINE_SUBSTITUTION,STRICT_TRANS_TABLES
-
 ```
 
-
-
 # 2. node链接mysql
+
 1. 在node中引入**mysql**模块。
 2. 通过检查mysql的status来进行配置链接。
 
 ```javascript
 var db = mysql.createConnection({
-	host : 'localhost',
-	user : 'root',
-	password : '',
-	port: '3306',
-	database : 'test'
+    host : 'localhost',
+    user : 'root',
+    password : '',
+    port: '3306',
+    database : 'test'
 });
-
 ```
+
+
+
