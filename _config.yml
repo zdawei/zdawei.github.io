@@ -119,7 +119,6 @@ pwa:
 paginate: 10
 plugins: 
   - jekyll-paginate
-  - jekyll-seo-tag
 
 # ------------ The following options are not recommended to be modified ------------------
 
