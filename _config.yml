@@ -1,8 +1,8 @@
 # The Site Configuration
 
 # Import the theme
-# theme: jekyll-theme-chirpy
 remote_theme: cotes2020/jekyll-theme-chirpy
+theme: jekyll-theme-chirpy
 
 
 # Change the following value to '/PROJECT_NAME' ONLY IF your site type is GitHub Pages Project sites
@@ -28,7 +28,7 @@ description: >- # used by seo meta and the atom feed
   大威的博客
 
 # fill in the protocol & hostname for your site, e.g., 'https://username.github.io'
-url: https://zdawei.github.io
+url: ""
 
 github:
   username: zdawei # change to your github username
