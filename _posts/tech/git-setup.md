@@ -1,0 +1,439 @@
+---
+layout: post
+title: gitlab搭建及踩坑记录
+date: 2023-07-03 16:08:10
+categories: git
+tags: git
+---
+
+# 背景介绍
+
+> 搭建git之前要理清问题，有助于我们选择最优方案。
+
+1.  **为什么要用git？** ​市面上比较常见的代码版本管理系统有三种：cvs,svn,git。 ​其中cvs和svn，业界已经很少在使用。相对比cvs和svn，git的优势很明显， ​**在安全方面**：它是分布式版本控制系统，每个用户都相当于一份备份，管理员也无需为数据备份担心。而svn和cvs作为集中式版本管理系统，存在单点故障的风险，备份版本库的任务非常繁重。 ​**在功能方面**：git功能丰富，支持ci/cd, 支持离线工作（离线commit）,文件以快照的方式进行管理和提交，速度快灵活，当然还有非常多其他优秀的功能等。
+    
+2.  **外网有很多git平台，为什么我们选择自己搭建一套？** ​公司在安全方面日益看中的情况下，我们的项目代码需要进行严格保密，有些甚至代码中的一些硬编码问题，有可能会导致公司的隐私信息泄露等严重的情况发生。这也是业界普遍在做的事情，各个公司是严格禁止公司内部代码上传到外网的git平台的，甚至私人仓库也不允许。
+    
+3.  **我们搭建的优势在哪里？** ​人才公司全体部门，只有我们是技术部，所以由我们搭建理论上来说是部门的职责所在。也没有其他部门更懂技术了。。
+    
+
+# GIT对比及选择
+
+> git工具调研
+
+整体git发展的简单路线
+
+![image](https://alidocs.oss-cn-zhangjiakou.aliyuncs.com/a/pgNNLOQrluyQ483j/416c587876a04534a65c72584acd2e1c0607.png)
+
+首先，git的常见平台有：极狐gitlab，gitlab，github，gitee等
+
+这四个git平台的发展历史就各不相同，GitHub历史最长，在2008年上线 ;GitLab其次，2011年上线 ;而Gitee则是2013年推出 ;最后是极狐GitLab，成立于2021年3月18日 。
+
+## git对比
+
+|   |  gitlab  |  极狐gitlab  |  github  |  gitee  |
+| --- | --- | --- | --- | --- |
+|  产品定位  |  是一个一体化的DevOps平台，提供覆盖软件全开发生命周期的管理功能，能提高企业DevOps能力。  |  一体化DevOps平台，是在中国大陆和港澳地区发行的企业级GitLab版本，拥有GitLab技术和品牌独家授权  |  一个开源项目的开发者平台  |  一个代码托管平台  |
+|  是否开源  |  核心开放的开源模式，MIT license许可证  |  同gitlab，极狐license  |  否  |  否  |
+|  文档完备情况  |  文档详细  |  文档详细  |  文档详细  |  仅有部分帮助文档  |
+|  私有化部署  |  可以  |  可以  |  不可以  |  不可以  |
+|  ci/cd  |  最早推出，功能丰富  |  同gitlab  |  action，较晚推出  |  同ci/cd，但是功能不完善，没有pipeline  |
+
+## 方案选择
+
+针对以上的对比情况，做如下选择：
+
+1.  github完全开源，这一点不可接受，且不可私有化部署。
+    
+2.  gitee功能不如gitlab和github丰富和完善，在使用过程中bug频出，体验不如其他三种。且不可私有化部署
+    
+3.  极狐gitlab，中国化的gitlab，基于GitLab EE和极狐(GitLab)持有独立知识产权的——JH代码仓库构建，会增加一些完全没必要的代码。
+    
+4.  gitlab会更为官方原生，在和其他平台做对比时是最优的。也是本方案最优的选择。
+    
+
+# 搭建流程
+
+> 如果想搭建极狐gitlab，直接去官网按照步骤来即可
+
+## gitlab安装&配置
+
+首先到：[https://packages.gitlab.com/gitlab/gitlab-ce](https://packages.gitlab.com/gitlab/gitlab-ce) ，选择目标版本的gitlab安装包，
+
+由于我系统是amd64架构的ubuntu20.04，所以选择ubuntu/focal版本，目前写本文档是最新的版本是15.4.5，选择ce  [++gitlab-ce\_15.4.5-ce.0\_amd64.deb++](https://packages.gitlab.com/gitlab/gitlab-ce/packages/ubuntu/focal/gitlab-ce_15.4.5-ce.0_amd64.deb)，注意一定要选对版本。不然辛苦下载的包装不上。
+
+更新源&依赖
+
+    sudo apt-get update
+    sudo apt-get install -y curl openssh-server ca-certificates tzdata perl
+
+(可选)安装postfix，在安装 Postfix 的过程中可能会出现一个配置界面，在该界面中选择“Internet Site”并按下回车。把“mail name”设置为服务器的外部 DNS 域名并按下回车。如果还有其它配置界面出现，继续按下回车以接受默认配置。
+
+    sudo apt-get install -y postfix
+
+下载gitlab软件包并安装
+
+    wget --content-disposition https://packages.gitlab.com/gitlab/gitlab-ce/packages/ubuntu/focal/gitlab-ce_15.4.5-ce.0_amd64.deb/download.deb
+    sudo dpkg -i gitlab-ce_15.4.5-ce.0_amd64.deb
+
+启动gitlab实例（命令集）
+
+    sudo gitlab-ctl reconfigure
+    sudo gitlab-ctl start
+    sudo gitlab-ctl status
+    sudo gitlab-ctl restart
+
+配置防火墙（命令集）
+
+    sudo ufw allow https
+    sudo ufw allow http
+    sudo ufw allow ssh
+    sudo ufw allow 2220/tcp # 由于改了sshd端口号，所以防火墙也要进行配置
+    sudo ufw enable
+    sudo ufw status
+    sudo ufw reload 
+
+查看gitlab默认root密码（需要尽快修改密码，不然reconfigure时，会在24小时后自动删除）
+
+    sudo cat /etc/gitlab/initial_root_password
+
+gitlab.yml配置文件，该文件是在reconfigure时自动覆盖生成，所以不要修改该文件
+
+    /opt/gitlab/embedded/service/gitlab-rails/config/gitlab.yml
+
+gitlab.rb文件位置，更改该文件是需要reconfigure，所有gitlab配置应该在该文件修改
+
+    /etc/gitlab/gitlab.rb
+
+gitlab.rb关键字段说明
+
+    #可以访问GitLab的URL。
+    external_url 'GENERATED_EXTERNAL_URL'
+    #配置ssh方式拉取代码的host
+    # gitlab_rails['gitlab_ssh_host'] = 'ssh.host_example.com'
+    # gitlab_rails['gitlab_ssh_user'] = ''
+    # gitlab_rails['time_zone'] = 'UTC'
+    
+    ##GitLab Shell 设置
+    # gitlab_rails['gitlab_shell_ssh_port'] = 22
+    # gitlab_rails['gitlab_shell_git_timeout'] = 800
+
+设置gitlab开机自启
+
+    systemctl enable gitlab-runsvdir.service
+
+访问gitlab web界面: 打开浏览器，访问gitlab.rb文件中external\_url字段配置的地址，其中该地址一定要配置好dns解析
+
+配置git ssh协议
+
+由于使用ssh链路通过内网穿透来进行外网的访问，所以ssh端口以及host需要进行修改
+
+修改gitlab.rb配置
+
+     gitlab_rails['gitlab_ssh_host'] = 这里填写内网穿透的域名或者ip
+     gitlab_rails['gitlab_shell_ssh_port'] = 填写你要监听的sshd服务的端口号
+
+由于这里更改了ssh的端口号，所以sshd服务一定要改成同样的端口号，切记
+
+sshd的配置文件所在位置
+
+    /etc/ssh/sshd_config
+
+重启sshd服务
+
+    systemctl restart sshd.service
+
+并且在natapp中进行正确的内外网的端口映射
+
+重新reconfigure并重启（重启可选，可以不用重启）
+
+    sudo gitlab-ctl reconfigure
+    sudo gitlab-ctl restart
+
+## 内网穿透配置
+
+> 这里进行内网穿透的简要说明，具体操作查看官方文档即可
+
+要想在外网访问内网的gitlab服务，方法也很多，这里整理下通过内网穿透方式来配置外网的访问。
+
+使用natapp来进行，该平台基于ngrok自动搭建和分配外网服务器提供内网穿透，安装和使用非常简单，且有免费链路可以使用，但是如果想要稳定访问需要花钱购买vip链路。
+
+比起直接使用ngrok来买外网主机和域名，并且搭建内外网穿透服务来说，natapp简单方便且快捷效率非常高。natapp会自动为我们管理和分配主机还有域名，我们无需关心底层的机器和域名的管理。
+
+natapp缺点是，想要稳定的链路，需要掏钱。不过价格也还算便宜。价格及产品对比
+
+![image](https://alidocs.oss-cn-zhangjiakou.aliyuncs.com/a/pgNNLOQrluyQ483j/2eb0b758f93e4af3bd835bee1da8d6b00607.png)
+
+准备两条穿透链路：分别是web协议链路和ssh协议链路，都选择了最便宜的vip-1型，成本价格：web+二级域名为12元，ssh链路价格为9元。
+
+分别进行链路配置，端口映射配置
+
+下载对应的natapp，[https://natapp.cn/#download](https://natapp.cn/#download)
+
+下载config.ini配置文件，到natapp同级目录中
+
+![image](https://alidocs.oss-cn-zhangjiakou.aliyuncs.com/a/pgNNLOQrluyQ483j/7c43fb3205f246a1950231e5425225340607.png)        复制链路的authtoken，到config.ini字段中
+
+在linux下，需要配置执行权限
+
+chmod a+x natapp
+
+然后运行
+
+./natapp
+
+后台运行，因为切换到后台不能挂起，所以需要利用nohup
+
+nohup ./natapp  -log=stdout &
+
+注意一定要加上-log=stdout, 或者在config.init里进行配置也行
+
+多开natapp
+
+配置多natapp目录即可，每个目录一个natapp配套config.init即可
+
+# 其他操作
+
+## 删除gitlab私有化
+
+1.  停止服务 ​sudo gitlab-ctl stop
+    
+2.  卸载gitlab ​sudo dpkg -P gitlab-ce
+    
+3.  最好也重启一下机器
+    
+4.  删除遗留文件 ​sudo find / -name gitlab
+    
+5.  删除如上所列的文件
+    
+
+## 登录gitlab内部postgresql
+
+1.  登陆gitlab的安装服务查看配置文件 ​cat /var/opt/gitlab/gitlab-rails/etc/database.yml 
+    
+
+    production:
+      adapter: postgresql
+      encoding: unicode
+      collation:
+      database: gitlabhq_production  //数据库名
+      pool: 10
+      username: 'gitlab'  //用户名
+      password:
+      host: '/var/opt/gitlab/postgresql'  //主机
+      port: 5432
+      socket:
+      sslmode:
+      sslrootcert:
+      sslca:
+
+2.  查看/etc/passwd文件里边gitlab对应的系统用户
+    
+
+    [root@localhost ~]# cat /etc/passwd
+    root:x:0:0:root:/root:/bin/bash
+    gitlab-www:x:496:493::/var/opt/gitlab/nginx:/bin/false
+    git:x:495:492::/var/opt/gitlab:/bin/sh
+    gitlab-redis:x:494:491::/var/opt/gitlab/redis:/bin/false
+    gitlab-psql:x:493:490::/var/opt/gitlab/postgresql:/bin/sh  //gitlab的postgresql用户
+
+3.  根据上面的配置信息登陆用户账号 ​​\[root@localhost ~\]# sudo -s ​​\[root@localhost ~\]# su - gitlab-psql     //登陆用户
+    
+4.  登陆postgresql数据库 \-sh-4.1$ psql -h /var/opt/gitlab/postgresql -d gitlabhq\_production   //连接到gitlabhq\_production库
+    
+
+    psql (9.2.18)
+    Type "help" for help.
+    
+    gitlabhq_production=#  \h    //查看帮助命令
+    
+    Available help:
+    ABORT CREATE FUNCTION DROP TABLE
+    ALTER AGGREGATE CREATE GROUP DROP TABLESPACE
+    ALTER COLLATION CREATE INDEX DROP TEXT SEARCH CONFIGURATION
+    ALTER CONVERSION CREATE LANGUAGE DROP TEXT SEARCH DICTIONARY
+    ALTER DATABASE CREATE OPERATOR DROP TEXT SEARCH PARSER
+    ALTER DEFAULT PRIVILEGES CREATE OPERATOR CLASS DROP TEXT SEARCH TEMPLATE
+    ALTER DOMAIN CREATE OPERATOR FAMILY DROP TRIGGER
+    ALTER EXTENSION CREATE ROLE DROP TYPE
+    
+    ……………………………………………………………………………………………………………………
+    
+     
+    
+    gitlabhq_production-# \l     //查看数据库
+    List of databases
+    Name | Owner | Encoding | Collate | Ctype | Access privileges 
+    ---------------------+-------------+----------+-------------+-------------+---------------------------------
+    gitlabhq_production | gitlab | UTF8 | en_US.UTF-8 | en_US.UTF-8 | 
+    postgres | gitlab-psql | UTF8 | en_US.UTF-8 | en_US.UTF-8 | 
+    template0 | gitlab-psql | UTF8 | en_US.UTF-8 | en_US.UTF-8 | =c/"gitlab-psql" +
+    | | | | | "gitlab-psql"=CTc/"gitlab-psql"
+    template1 | gitlab-psql | UTF8 | en_US.UTF-8 | en_US.UTF-8 | =c/"gitlab-psql" +
+    | | | | | "gitlab-psql"=CTc/"gitlab-psql"
+    (4 rows)
+    
+     
+    
+    gitlabhq_production-# \dt   //查看多表
+    List of relations
+    Schema | Name | Type | Owner 
+    --------+--------------------------------------+-------+--------
+    public | abuse_reports | table | gitlab
+    public | appearances | table | gitlab
+    public | application_settings | table | gitlab
+    public | audit_events | table | gitlab
+    public | award_emoji | table | gitlab
+    public | boards | table | gitlab
+    public | broadcast_messages | table | gitlab
+    
+    ……………………………………………………………………………………………………………………
+    
+     
+    
+    gitlabhq_production-# \d abuse_reports    //查看单表
+    Table "public.abuse_reports"
+    Column | Type | Modifiers 
+    --------------+-----------------------------+------------------------------------------------------------
+    id | integer | not null default nextval('abuse_reports_id_seq'::regclass)
+    reporter_id | integer | 
+    user_id | integer | 
+    message | text | 
+    created_at | timestamp without time zone | 
+    updated_at | timestamp without time zone | 
+    message_html | text | 
+    Indexes:
+    "abuse_reports_pkey" PRIMARY KEY, btree (id)
+    
+     
+    
+    gitlabhq_production-# \di    //查看索引
+    List of relations
+    Schema | Name | Type | Owner | Table 
+    
+    --------+-----------------------------------------------------------------+-------+--------+--------------------------------
+    ------
+    public | abuse_reports_pkey | index | gitlab | abuse_reports
+    public | appearances_pkey | index | gitlab | appearances
+    public | application_settings_pkey | index | gitlab | application_settings
+    public | audit_events_pkey | index | gitlab | audit_events
+    public | award_emoji_pkey | index | gitlab | award_emoji
+    public | boards_pkey | index | gitlab | boards
+    public | broadcast_messages_pkey | index | gitlab | broadcast_messages
+    public | chat_names_pkey | index | gitlab | chat_names
+    public | ci_application_settings_pkey | index | gitlab | ci_application_settings
+    public | ci_builds_pkey | index | gitlab | ci_builds
+    public | ci_commits_pkey | index | gitlab | ci_commits
+    
+    ………………………………………………………………………………………………………………………………………………
+    
+     
+    
+    gitlabhq_production=# SELECT spcname FROM pg_tablespace;  //查看所有表空间
+    
+    spcname 
+    ------------
+    pg_default
+    pg_global
+    (2 rows)
+    
+     
+    
+    gitlabhq_production-# \q    //退出psql
+    -sh-4.1$ exit                //退出登录用户
+    logout
+    批量替换某个表字段的字符串
+    
+    update tableA set field=replace(field,'value1','value2')
+
+# 整体访问链路
+
+> 一个简单的图
+
+[请至钉钉文档查看「流程图」](https://alidocs.dingtalk.com/i/nodes/3QD5Ea7xAo4VExxLGwP9WG1YBwgnNKb0?iframeQuery=anchorId%253DX02larn44d9wff6t3f6zl&utm_scene=team_space)
+
+# 踩坑记录
+
+1.  Error executing action \`run\` on resource 'bash\[migrate gitlab-rails database\]'  ... Mixlib::ShellOut::ShellCommandFailed: rails\_migration\[gitlab-rails\] (gitlab::database\_migrations line 51) had an error: Mixlib::ShellOut::ShellCommandFailed: sidekiq\_service\[sidekiq\]
+    
+
+执行如下：
+
+    gitlab-rake gitlab:background_migrations:finalize[ProjectNamespaces::BackfillProjectNamespaces,projects,id,'[null\,"up"]']
+    gitlab-rake db:migrate
+    gitlab-ctl reconfigure
+    apt dist-upgrade
+    gitlab-ctl restart
+
+参考issues：[https://gitlab.com/gitlab-org/gitlab/-/issues/360377](https://gitlab.com/gitlab-org/gitlab/-/issues/360377)
+
+2.  git 提示：error: unable to rewind rpc post data - try increasing http.postBuffer ... error: RPC failed; curl 56 Recv failure: Connection reset by peer
+    
+
+1.  设置postBuffer大一些 ​git config --global http.postBuffer 1048576000
+    
+2.  查看是否通过http协议拉代码的，如果是，natapp的web协议有超时时间，超过后会自动断远程连接。所以如果是拉取大型项目的话，需要使用ssh协议拉代码。更换源即可
+    
+
+1.   ssh协议拉取代码不通 ​查看是否gitlab的gitlab\_rails\['gitlab\_shell\_ssh\_port'\]和sshd服务的端口是否一致，一定要一致
+    
+2.  gitlab通过gravatar来自动生成头像，由于国内屏蔽该平台（开发者需要掌握配置梯子的方法），也可以直接禁掉该功能 ​登录管理员账号，进入到/admin/application\_settings，取消勾选Gravatar enabled即可。 ​![image](https://alidocs.oss-cn-zhangjiakou.aliyuncs.com/a/pgNNLOQrluyQ483j/a8548b69eb5b443884335e83500c543b0607.png)
+    
+3.  更新了sshd端口号，通过终端登录不上了？ ​由于改了sshd的端口号，所以防火墙也要进行同样的设置
+    
+
+    # firewall-cmd (RHEL/CentOS/Fedora) 环境
+    # firewall-cmd --permanent --add-port=2220/tcp
+    # firewall-cmd --reload
+    OR
+    # UFW (Debian/Ubuntu) 环境
+    $ sudo ufw allow 2220/tcp
+    $ sudo ufw reload 
+
+6.  安装时卡在**ruby\_block\[wait for logrotate service socket\] action run**  **​**原因：已经安装一次gitlab , 然后卸载重装过程中出现该问题  首先按住CTRL+C强制结束正在安装的程序 ​​运行 sudo  systemctl restart gitlab-runsvdir ​gitlab-ctl reconfigure 重新启动程序
+    
+
+# 重要事项（使用前一定要看）
+
+1.  由于居家办公，无法配置公司内网机器，因为gitlab对window的支持不友好，所以在家里买了最便宜的natapp链路，配置到自家的ubuntu电脑，自家网络环境不稳定，且有每个月5G的流量的限制，所以尽量暂非必要请谨慎使用，后续回到公司需要进行代码库的迁移工作。
+    
+2.  gitlab默认禁掉了自由注册账号的权限，如需使用，请先注册，后联系我审批
+    
+3.  由于natapp的web协议有超时限制，所以拉取体积较大的项目时，尽量使用ssh协议拉取
+    
+
+# 参考资料
+
+[https://zhuanlan.zhihu.com/p/437490876](https://zhuanlan.zhihu.com/p/437490876)
+
+[https://www.jianshu.com/p/6cd5eecd85db](https://www.jianshu.com/p/6cd5eecd85db)
+
+[https://blog.csdn.net/u014380491/article/details/122410481](https://blog.csdn.net/u014380491/article/details/122410481)
+
+[https://www.jianshu.com/p/6cd5eecd85db](https://www.jianshu.com/p/6cd5eecd85db)
+
+[https://blog.csdn.net/u014380491/article/details/122410481](https://blog.csdn.net/u014380491/article/details/122410481)
+
+[https://natapp.cn/article/natapp\_newbie](https://natapp.cn/article/natapp_newbie)
+
+[https://natapp.cn/article/nohup](https://natapp.cn/article/nohup)
+
+[https://blog.csdn.net/axibazZ/article/details/118730535](https://blog.csdn.net/axibazZ/article/details/118730535)
+
+[https://www.cnblogs.com/ifme/p/12851451.html](https://www.cnblogs.com/ifme/p/12851451.html)
+
+[https://blog.csdn.net/chihaihai/article/details/122709431](https://blog.csdn.net/chihaihai/article/details/122709431)
+
+[http://t.zoukankan.com/ifme-p-12851748.html](http://t.zoukankan.com/ifme-p-12851748.html)
+
+[https://gitlab.com/gitlab-org/gitlab/-/issues/360377](https://gitlab.com/gitlab-org/gitlab/-/issues/360377)
+
+[https://forum.gitlab.com/t/gitlab-ctl-reconfigure-doesnt-work-after-gitlab-omnibus-updated/68715](https://forum.gitlab.com/t/gitlab-ctl-reconfigure-doesnt-work-after-gitlab-omnibus-updated/68715)
+
+[https://stackoverflow.com/questions/38378914/how-to-fix-git-error-rpc-failed-curl-56-gnutls](https://stackoverflow.com/questions/38378914/how-to-fix-git-error-rpc-failed-curl-56-gnutls)
+
+[https://blog.csdn.net/ouyang\_peng/article/details/100173795](https://blog.csdn.net/ouyang_peng/article/details/100173795)
+
+[https://www.tecmint.com/fix-no-route-to-host-ssh-error-in-linux/](https://www.tecmint.com/fix-no-route-to-host-ssh-error-in-linux/)
+
+[https://blog.csdn.net/weixin\_30672295/article/details/99506941](https://blog.csdn.net/weixin_30672295/article/details/99506941)
